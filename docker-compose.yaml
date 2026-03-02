@@ -1,46 +1,43 @@
-
 services:
 
-  php2:
-    container_name: symfony7.1_php
+  php:
+    container_name: symfony_${app}_php
     build:
       context: .
       dockerfile: Dockerfile-php
     volumes:
       - files_2:/var/www/symfony
-      - /home/augc/docker/aga/build/php/:/usr/local/etc/php/
+      - /home/augc/docker/${app}/build/php/:/usr/local/etc/php/
     networks:
       symfony_net:
-        ipv4_address: 172.18.0.21
+        ipv4_address: ${ip_php}
 
-  nginx2:
-    container_name: symfony7.1_nginx
+  nginx:
+    container_name: symfony_${app]_nginx
     depends_on:
-      - php2
+      - php
     build:
       context: .
       dockerfile: Dockerfile-nginx
     ports:
-      - 4447:80 # aga2.augc.org
+      - ${port}:80
     volumes:
-      - files_2:/var/www/symfony/
-      - /home/augc/docker/aga/build/nginx/conf.d/:/etc/nginx/conf.d/
+      - files:/var/www/symfony/
+      - /home/augc/docker/${app}/build/nginx/conf.d/:/etc/nginx/conf.d/
     networks:
       symfony_net:
-        ipv4_address: 172.18.0.20
+        ipv4_address: ${ip_nginx}
     restart: always
 
 volumes:
-  files_2:
+  files:
     driver: local
     driver_opts:
       type: 'none'
       o: 'bind'
-      device: /home/augc/docker/aga/files
+      device: /home/augc/docker/${app}/files
 
 
 networks:
   symfony_net:
     external: true
-
-
