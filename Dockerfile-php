@@ -1,0 +1,86 @@
+FROM php:8.2-fpm-bookworm
+
+# -------------------------------------------------------------------
+# Dependencias del sistema necesarias para extensiones PHP
+# -------------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    openssh-client \
+    git \
+    curl \
+    nano \
+    zlib1g-dev \
+    libxml2-dev \
+    libzip-dev \
+    libpq-dev \
+    libfreetype6-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
+    libxslt1-dev \
+    libicu-dev \
+    libonig-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# -------------------------------------------------------------------
+# Extensiones PHP principales
+# -------------------------------------------------------------------
+RUN docker-php-ext-install \
+    zip \
+    intl \
+    pdo \
+    mbstring \
+    mysqli \
+    pdo_mysql \
+    opcache \
+    xsl \
+    bcmath
+
+# -------------------------------------------------------------------
+# PostgreSQL
+# -------------------------------------------------------------------
+RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql \
+    && docker-php-ext-install pgsql pdo_pgsql
+
+# -------------------------------------------------------------------
+# GD (JPEG + FreeType)
+# -------------------------------------------------------------------
+RUN docker-php-ext-configure gd --with-jpeg --with-freetype \
+    && docker-php-ext-install -j$(nproc) gd
+
+# -------------------------------------------------------------------
+# Composer
+# -------------------------------------------------------------------
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
+    && php composer-setup.php \
+    && mv composer.phar /usr/local/bin/composer \
+    && php -r "unlink('composer-setup.php');"
+
+# -------------------------------------------------------------------
+# Node 20 con NVM
+# -------------------------------------------------------------------
+ENV NODE_VERSION=20.11.0
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
+ENV NVM_DIR=/root/.nvm
+
+RUN . "$NVM_DIR/nvm.sh" && nvm install ${NODE_VERSION} \
+    && nvm alias default v${NODE_VERSION}
+
+ENV PATH="/root/.nvm/versions/node/v${NODE_VERSION}/bin/:${PATH}"
+
+RUN node --version && npm --version
+
+# -------------------------------------------------------------------
+# Symfony CLI
+# -------------------------------------------------------------------
+RUN curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.deb.sh' | bash \
+    && apt-get update \
+    && apt-get install -y symfony-cli \
+    && rm -rf /var/lib/apt/lists/*
+
+# -------------------------------------------------------------------
+# Configuración del entorno de trabajo
+# -------------------------------------------------------------------
+WORKDIR /var/www/symfony
+
+RUN chmod 755 /var/www/symfony \
+    && chown www-data:www-data /var/www/symfony
