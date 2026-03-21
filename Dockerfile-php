@@ -19,6 +19,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxslt1-dev \
     libicu-dev \
     libonig-dev \
+    tzdata \
+    && ln -snf /usr/share/zoneinfo/Europe/Madrid /etc/localtime \
+    && echo "Europe/Madrid" > /etc/timezone \
     && rm -rf /var/lib/apt/lists/*
 
 # -------------------------------------------------------------------
@@ -80,7 +83,15 @@ RUN curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.deb.sh' | b
 # -------------------------------------------------------------------
 # Configuración del entorno de trabajo
 # -------------------------------------------------------------------
+RUN useradd -u 1000 -g www-data -s /bin/bash -m augc \
+    && git config --system user.email "admin@augc.org" \
+    && git config --system user.name "augc" \
+    && git config --global credential.helper store
+
 WORKDIR /var/www/symfony
+
+# Desactivar access log de PHP-FPM (reduce ruido en docker logs)
+RUN sed -i 's|access.log = /proc/self/fd/2|access.log = /dev/null|' /usr/local/etc/php-fpm.d/docker.conf
 
 RUN chmod 755 /var/www/symfony \
     && chown www-data:www-data /var/www/symfony

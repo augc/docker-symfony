@@ -1,33 +1,151 @@
 services:
-
-  php:
-    container_name: symfony_${app}_php
+  php3:
+    container_name: symfony_${APP}_php
     build:
       context: .
       dockerfile: Dockerfile-php
+    environment:
+      - TZ=Europe/Madrid
     volumes:
-      - files_2:/var/www/symfony
-      - /home/augc/docker/${app}/build/php/:/usr/local/etc/php/
+      - files:/var/www/symfony
+      - /home/augc/docker/${APP}/build/php/:/usr/local/etc/php/
     networks:
       symfony_net:
-        ipv4_address: ${ip_php}
+        ipv4_address: ${IP_PHP}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  nginx:
-    container_name: symfony_${app]_nginx
+  nginx3:
+    container_name: symfony_${APP}_nginx
     depends_on:
-      - php
+      - php3
     build:
       context: .
       dockerfile: Dockerfile-nginx
     ports:
-      - ${port}:80
+      - ${PORT}:80
     volumes:
       - files:/var/www/symfony/
-      - /home/augc/docker/${app}/build/nginx/conf.d/:/etc/nginx/conf.d/
+      - /home/augc/docker/${APP}/build/nginx/conf.d/:/etc/nginx/conf.d/
     networks:
       symfony_net:
-        ipv4_address: ${ip_nginx}
+        ipv4_address: ${IP_NGINX}
     restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  worker_async:
+    container_name: symfony_${APP}_worker_async
+    build:
+      context: .
+      dockerfile: Dockerfile-php
+    command: php bin/console messenger:consume async --time-limit=3600 --memory-limit=256M --no-interaction
+    working_dir: /var/www/symfony/web.augc.org
+    environment:
+      - TZ=Europe/Madrid
+    volumes:
+      - files:/var/www/symfony
+      - /home/augc/docker/${APP}/build/php/:/usr/local/etc/php/
+    depends_on:
+      - php3
+    restart: always
+    healthcheck:
+      test: ["CMD", "php", "bin/console", "messenger:stats", "--no-interaction"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      symfony_net:
+        ipv4_address: ${IP_WORKER_ASYNC}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  worker_failed:
+    container_name: symfony_${APP}_worker_failed
+    build:
+      context: .
+      dockerfile: Dockerfile-php
+    environment:
+      - TZ=Europe/Madrid
+    command: php bin/console messenger:consume failed --time-limit=3600 --memory-limit=128M --no-interaction
+    working_dir: /var/www/symfony/web.augc.org
+    volumes:
+      - files:/var/www/symfony
+      - /home/augc/docker/${APP}/build/php/:/usr/local/etc/php/
+    depends_on:
+      - php3
+    restart: always
+    networks:
+      symfony_net:
+        ipv4_address: ${IP_WORKER_FAILED}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  worker_push:
+    container_name: symfony_${APP}_worker_push
+    build:
+      context: .
+      dockerfile: Dockerfile-php
+    command: php bin/console messenger:consume push_queue --time-limit=14400 --memory-limit=128M --no-interaction
+    working_dir: /var/www/symfony/web.augc.org
+    environment:
+      - TZ=Europe/Madrid
+    volumes:
+      - files:/var/www/symfony
+      - /home/augc/docker/${APP}/build/php/:/usr/local/etc/php/
+    depends_on:
+      - php3
+    restart: always
+    networks:
+      symfony_net:
+        ipv4_address: ${IP_WORKER_PUSH}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  newsletter_digest:
+    container_name: symfony_${APP}_newsletter_digest
+    build:
+      context: .
+      dockerfile: Dockerfile-php
+    environment:
+      - TZ=Europe/Madrid
+    command: >
+      /bin/sh -c "
+      while true; do
+        php bin/console app:newsletter:process --env=prod --no-interaction;
+        sleep 60;
+      done"
+    working_dir: /var/www/symfony/web.augc.org
+    volumes:
+      - files:/var/www/symfony
+      - /home/augc/docker/${APP}/build/php/:/usr/local/etc/php/
+    depends_on:
+      - php3
+    restart: always
+    networks:
+      symfony_net:
+        ipv4_address: ${IP_NEWSLETTER_DIGEST}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   files:
@@ -35,8 +153,7 @@ volumes:
     driver_opts:
       type: 'none'
       o: 'bind'
-      device: /home/augc/docker/${app}/files
-
+      device: /home/augc/docker/${APP}/files
 
 networks:
   symfony_net:
