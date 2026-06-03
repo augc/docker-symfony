@@ -1,0 +1,14 @@
+/var/log/nginx/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    dateext
+    dateformat -%Y%m%d
+    sharedscripts
+    postrotate
+        nginx -s reopen
+    endscript
+}

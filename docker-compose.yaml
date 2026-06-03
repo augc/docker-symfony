@@ -1,6 +1,6 @@
 services:
   php3:
-    container_name: symfony_${APP}_php
+    container_name: ${APP}_php
     build:
       context: .
       dockerfile: Dockerfile-php
@@ -8,7 +8,7 @@ services:
       - TZ=Europe/Madrid
     volumes:
       - files:/var/www/symfony
-      - /home/augc/docker/${APP}/build/php/:/usr/local/etc/php/
+      - ${PPATH}/build/php/:/usr/local/etc/php/
     networks:
       symfony_net:
         ipv4_address: ${IP_PHP}
@@ -17,19 +17,22 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    mem_limit: 1g
+    memswap_limit: 1g
 
   nginx3:
-    container_name: symfony_${APP}_nginx
+    container_name: ${APP}_nginx
     depends_on:
       - php3
     build:
       context: .
       dockerfile: Dockerfile-nginx
     ports:
-      - ${PORT}:80
+      - ${PORT}:80 #augc.org
+      - ${PORT2}:81 #colaboradores.augc.org
     volumes:
       - files:/var/www/symfony/
-      - /home/augc/docker/${APP}/build/nginx/conf.d/:/etc/nginx/conf.d/
+      - ${PPATH}/build/nginx/conf.d/:/etc/nginx/conf.d/
     networks:
       symfony_net:
         ipv4_address: ${IP_NGINX}
@@ -39,9 +42,10 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    mem_limit: 128m
 
   worker_async:
-    container_name: symfony_${APP}_worker_async
+    container_name: ${APP}_worker_async
     build:
       context: .
       dockerfile: Dockerfile-php
@@ -51,7 +55,7 @@ services:
       - TZ=Europe/Madrid
     volumes:
       - files:/var/www/symfony
-      - /home/augc/docker/${APP}/build/php/:/usr/local/etc/php/
+      - ${PPATH}/build/php/:/usr/local/etc/php/
     depends_on:
       - php3
     restart: always
@@ -69,9 +73,10 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    mem_limit: 300m
 
   worker_failed:
-    container_name: symfony_${APP}_worker_failed
+    container_name: ${APP}_worker_failed
     build:
       context: .
       dockerfile: Dockerfile-php
@@ -81,7 +86,7 @@ services:
     working_dir: /var/www/symfony/web.augc.org
     volumes:
       - files:/var/www/symfony
-      - /home/augc/docker/${APP}/build/php/:/usr/local/etc/php/
+      - ${PPATH}/build/php/:/usr/local/etc/php/
     depends_on:
       - php3
     restart: always
@@ -93,19 +98,20 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    mem_limit: 160m
 
   worker_push:
-    container_name: symfony_${APP}_worker_push
+    container_name: ${APP}_worker_push
     build:
       context: .
       dockerfile: Dockerfile-php
-    command: php bin/console messenger:consume push_queue --time-limit=14400 --memory-limit=128M --no-interaction
+    command: php bin/console messenger:consume push_queue --time-limit=3600 --memory-limit=128M --no-interaction
     working_dir: /var/www/symfony/web.augc.org
     environment:
       - TZ=Europe/Madrid
     volumes:
       - files:/var/www/symfony
-      - /home/augc/docker/${APP}/build/php/:/usr/local/etc/php/
+      - ${PPATH}/build/php/:/usr/local/etc/php/
     depends_on:
       - php3
     restart: always
@@ -117,14 +123,16 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    mem_limit: 160m
 
   newsletter_digest:
-    container_name: symfony_${APP}_newsletter_digest
+    container_name: ${APP}_newsletter_digest
     build:
       context: .
       dockerfile: Dockerfile-php
     environment:
       - TZ=Europe/Madrid
+    mem_limit: 256m
     command: >
       /bin/sh -c "
       while true; do
@@ -134,7 +142,7 @@ services:
     working_dir: /var/www/symfony/web.augc.org
     volumes:
       - files:/var/www/symfony
-      - /home/augc/docker/${APP}/build/php/:/usr/local/etc/php/
+      - ${PPATH}/build/php/:/usr/local/etc/php/
     depends_on:
       - php3
     restart: always
@@ -153,7 +161,7 @@ volumes:
     driver_opts:
       type: 'none'
       o: 'bind'
-      device: /home/augc/docker/${APP}/files
+      device: ${PPATH}/files
 
 networks:
   symfony_net:

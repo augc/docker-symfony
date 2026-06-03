@@ -1,2 +1,5 @@
 .env
 files/*
+build/nginx/conf.d/*
+files.backup/
+web.augc.org/

@@ -3,6 +3,17 @@ FROM nginx:latest
 
 COPY ./build/nginx/conf.d/ /etc/nginx/conf.d/
 COPY ./build/nginx/nginx.conf /etc/nginx/
+COPY ./build/nginx/logrotate/nginx /etc/logrotate.d/nginx
+COPY ./build/nginx/entrypoint.sh /entrypoint.sh
 
-RUN apt update
-RUN apt install -y nano
+RUN apt update && apt install -y --no-install-recommends \
+        nano \
+        logrotate \
+        cron \
+        procps \
+    && rm -rf /var/lib/apt/lists/* \
+    && chmod 644 /etc/logrotate.d/nginx \
+    && chmod +x /entrypoint.sh
+# Añadido logrotate para rotación de logs
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]

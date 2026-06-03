@@ -19,6 +19,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxslt1-dev \
     libicu-dev \
     libonig-dev \
+    libwebp-dev \
+    poppler-utils \
     tzdata \
     && ln -snf /usr/share/zoneinfo/Europe/Madrid /etc/localtime \
     && echo "Europe/Madrid" > /etc/timezone \
@@ -38,16 +40,32 @@ RUN docker-php-ext-install \
     xsl \
     bcmath
 
+RUN apt-get install -y gcc make autoconf libc-dev pkg-config && \
+    pecl install mailparse && \
+    docker-php-ext-enable mailparse && \
+    rm -rf /var/lib/apt/lists/*
+
 # -------------------------------------------------------------------
 # PostgreSQL
 # -------------------------------------------------------------------
-RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql \
-    && docker-php-ext-install pgsql pdo_pgsql
+#RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql \
+#    && docker-php-ext-install pgsql pdo_pgsql
+
+RUN mkdir -p /usr/local/etc/php/conf.d \
+    && docker-php-ext-configure pgsql --with-pgsql=/usr/local/pgsql \
+    && docker-php-ext-install pgsql pdo_pgsql \
+    && docker-php-ext-enable pgsql pdo_pgsql
+
+# ---------
+# BC Math
+# ---------
+RUN docker-php-ext-install bcmath
+
 
 # -------------------------------------------------------------------
-# GD (JPEG + FreeType)
+# GD (JPEG + FreeType + webp)
 # -------------------------------------------------------------------
-RUN docker-php-ext-configure gd --with-jpeg --with-freetype \
+RUN docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
     && docker-php-ext-install -j$(nproc) gd
 
 # -------------------------------------------------------------------
