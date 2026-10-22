@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libwebp-dev \
     poppler-utils \
     tzdata \
+    tree \
     && ln -snf /usr/share/zoneinfo/Europe/Madrid /etc/localtime \
     && echo "Europe/Madrid" > /etc/timezone \
     && rm -rf /var/lib/apt/lists/*
@@ -110,6 +111,8 @@ WORKDIR /var/www/symfony
 
 # Desactivar access log de PHP-FPM (reduce ruido en docker logs)
 RUN sed -i 's|access.log = /proc/self/fd/2|access.log = /dev/null|' /usr/local/etc/php-fpm.d/docker.conf
+
+COPY build/php/php-fpm.d/zz-custom.conf /usr/local/etc/php-fpm.d/zz-custom.conf
 
 RUN chmod 755 /var/www/symfony \
     && chown www-data:www-data /var/www/symfony

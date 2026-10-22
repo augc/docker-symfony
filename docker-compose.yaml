@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-php
+    restart: unless-stopped
     environment:
       - TZ=Europe/Madrid
     volumes:
@@ -17,8 +18,8 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    mem_limit: 1g
-    memswap_limit: 1g
+    mem_limit: 2g
+    memswap_limit: 2500m
 
   nginx3:
     container_name: ${APP}_nginx
@@ -33,6 +34,7 @@ services:
     volumes:
       - files:/var/www/symfony/
       - ${PPATH}/build/nginx/conf.d/:/etc/nginx/conf.d/
+      - nginx_logs:/var/log/nginx/ # <- Para grafana
     networks:
       symfony_net:
         ipv4_address: ${IP_NGINX}
@@ -162,6 +164,8 @@ volumes:
       type: 'none'
       o: 'bind'
       device: ${PPATH}/files
+  nginx_logs:                         # ← Grafana
+    driver: local
 
 networks:
   symfony_net:
